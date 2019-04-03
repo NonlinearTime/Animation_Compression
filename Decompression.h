@@ -1,0 +1,14 @@
+//
+// Created by haines on 3/27/19.
+//
+
+#ifndef ANIMATION_COMPRESSION_DECOMPRESSION_H
+#define ANIMATION_COMPRESSION_DECOMPRESSION_H
+
+
+class Decompression {
+
+};
+
+
+#endif //ANIMATION_COMPRESSION_DECOMPRESSION_H

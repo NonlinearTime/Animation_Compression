@@ -1,0 +1,14 @@
+//
+// Created by haines on 3/31/19.
+//
+
+#ifndef ANIMATION_COMPRESSION_ADAPTIVEARTHCODER_H
+#define ANIMATION_COMPRESSION_ADAPTIVEARTHCODER_H
+
+
+class AdaptiveArthCoder {
+
+};
+
+
+#endif //ANIMATION_COMPRESSION_ADAPTIVEARTHCODER_H
