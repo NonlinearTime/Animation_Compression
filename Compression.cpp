@@ -3,10 +3,11 @@
 //
 
 #include "Compression.h"
+#include "Coder.h"
 
-void Compression::save_data(char *file_name) {
+
+void Compression::save_data(string file_name) {
     // write out_bitstream into bin file
-
     out_stream.save(file_name);
 }
 
@@ -28,11 +29,17 @@ bool Compression::load_data(string data_dir, int first_frame, int num_frames) {
 
 void Compression::do_compression() {
     clst.segmentation();
+    cout << "segmentation done!" << endl;
     delta_encode();
+    cout << "delta done!" << endl;
     svd_encode();
+    cout << "pca done!" << endl;
     quantitzation(16, 16, 16);
+    cout << "quantization done!" << endl;
     write_bitstream();
+    cout << "write_bitstream done!" << endl;
     adpac_encoder();
+    cout << "arithmatic encode done!" << endl;
 }
 
 void Compression::set_cluster_num(uint32_t N) {
@@ -45,12 +52,14 @@ void Compression::do_compression(uint32_t cluster_num) {
 }
 
 void Compression::delta_encode() {
-    auto frames = clst.get_frames();
-    auto seed_triangles = clst.get_seed_triangles();
+    auto& frames = clst.get_frames();
+    auto& seed_triangles = clst.get_seed_triangles();
 
     Point p1, p2, p3;
     Point t1, t2, t3;
     delta = Matrix(9 * clst.get_clusters_num(), frames.size() - 1 );
+
+    cout << delta.Getcols() << " " << delta.Getrows() << endl;
 
     for (uint32_t i = 0 ; i != seed_triangles.size() ; ++i) {
         for (uint32_t j = 0 ; j != frames.size() ; ++j) {
@@ -71,15 +80,15 @@ void Compression::delta_encode() {
                 t1 = p1 - t1;
                 t2 = p2 - t2;
                 t3 = p3 - t3;
-                delta(9 * i, j) = t1.x;
-                delta(9 * i + 1, j) = t1.y;
-                delta(9 * i + 2, j) = t1.z;
-                delta(9 * i + 3, j) = t2.x;
-                delta(9 * i + 4, j) = t2.y;
-                delta(9 * i + 5, j) = t2.z;
-                delta(9 * i + 6, j) = t3.x;
-                delta(9 * i + 7, j) = t3.y;
-                delta(9 * i + 8, j) = t3.z;
+                delta(9 * i, j - 1) = t1.x;
+                delta(9 * i + 1, j - 1) = t1.y;
+                delta(9 * i + 2, j - 1) = t1.z;
+                delta(9 * i + 3, j - 1) = t2.x;
+                delta(9 * i + 4, j - 1) = t2.y;
+                delta(9 * i + 5, j - 1) = t2.z;
+                delta(9 * i + 6, j - 1) = t3.x;
+                delta(9 * i + 7, j - 1) = t3.y;
+                delta(9 * i + 8, j - 1) = t3.z;
             }
             t1 = p1;
             t2 = p2;
@@ -112,8 +121,8 @@ void Compression::delta_encode() {
 }
 
 void Compression::pca_encode() {
-    Frames frames = clst.get_frames();
-    vector<cluster > clusters = clst.get_clusters();
+    auto& frames = clst.get_frames();
+    auto& clusters = clst.get_clusters();
     vector<Matrix > U;
     vector<Matrix > data;
     for (uint32_t i = 0 ; i != clst.get_clusters_num(); ++i) {
@@ -135,24 +144,29 @@ void Compression::pca_encode() {
 }
 
 void Compression::svd_encode() {
-    Frames frames = clst.get_frames();
-    vector<cluster > clusters = clst.get_clusters();
+    auto& frames = clst.get_frames();
+    auto& clusters = clst.get_clusters();
     vector<Matrix > U;
     vector<Matrix > data;
+    auto& lcfs = clst.get_lcfs();
+
     for (uint32_t i = 0 ; i != clst.get_clusters_num(); ++i) {
         Matrix m(clusters[i].size() * 3, frames.size());
+        cout << m.Getrows() << " " << m.Getcols() << endl;
         for (uint32_t j = 0 ; j != clusters[i].size(); ++j) {
             uint32_t p = clusters[i][j];
             for (uint32_t k = 0 ; k != frames.size(); ++k) {
-                m(3 * j, k) = frames[k].vertices[p].x;
-                m(3 * j + 1, k) = frames[k].vertices[p].y;
-                m(3 * j + 2, k) = frames[k].vertices[p].y;
+                Point t = lcfs[k].lcs[i].world2local(frames[k].vertices[p]);
+                m(3 * j, k) = t.x;
+                m(3 * j + 1, k) = t.y;
+                m(3 * j + 2, k) = t.y;
             }
         }
         data.push_back(m);
     }
 
     for (uint32_t i = 0 ; i != data.size() ; ++i) {
+        cout << "svd: " << i << endl;
         svd_per_cluster(data[i], 1);
     }
 }
@@ -199,12 +213,14 @@ void Compression::pca_per_cluster(Matrix m, int N) {
 }
 
 void Compression::svd_per_cluster(Matrix m, int N) {
-    Matrix t = m * (m.trans());
-    Matrix U, m_reduce;
-    vector<double> ei;
-    t.eig(ei, &U);
-    U = U.trunc(N, 1);
-    m_reduce = U * m;
+    Matrix U(0,0), m_reduce(0,0);
+    if (m.Getrows() != 0) {
+        Matrix t = m * (m.trans());
+        vector<double> ei;
+        t.eig(ei, &U);
+        U = U.trunc(N, 1);
+        m_reduce = U * m;
+    }
     this->U.push_back(U);
     this->C.push_back(m_reduce);
 }
@@ -216,6 +232,15 @@ void Compression::quantitzation(int pca_bits, int seed_bits, int delta_bits) {
     bithead.delta_bits = delta_bits;
     bithead.seed_bits = seed_bits;
     for (uint32_t i = 0 ; i != U.size(); ++i) {
+        if (U[i].Getrows() == 0) {
+            Urow_array.push_back(0);
+            Ucol_array.push_back(0);
+            Crow_array.push_back(0);
+            Ccol_array.push_back(0);
+            UL.push_back(0);
+            CL.push_back(0);
+            continue;
+        }
         double t, p;
         t = U[i].max_element();
         p = U[i].min_element();
@@ -253,6 +278,8 @@ void Compression::quantitzation(int pca_bits, int seed_bits, int delta_bits) {
 }
 
 void Compression::write_bitstream() {
+    in_stream.set_auto_resize(true);
+    out_stream.set_auto_resize(true);
     bithead.seed_num = clst.get_clusters_num();
     bithead.frame_num = clst.get_frames().size();
 
@@ -267,6 +294,8 @@ void Compression::write_bitstream() {
         in_stream.write_bits(&t, bithead.seed_bits);
     }
 
+    cout << "seeds: " << in_stream.query_occupancy() << endl;
+
     //write delta
     for (uint32_t i = 0 ; i != delta.Getrows(); ++i) {
         for (uint32_t j = 0 ; j != delta.Getcols(); ++j) {
@@ -274,6 +303,7 @@ void Compression::write_bitstream() {
             in_stream.write_bits(&t, bithead.delta_bits);
         }
     }
+    cout << "delta: " << in_stream.query_occupancy() << endl;
 
     //write U/C information
     in_stream.write_bytes(UL.data(), UL.size() * sizeof(double));
@@ -282,6 +312,7 @@ void Compression::write_bitstream() {
     in_stream.write_bytes(Ucol_array.data(), Ucol_array.size() * sizeof(int));
     in_stream.write_bytes(Crow_array.data(), Crow_array.size() * sizeof(int));
     in_stream.write_bytes(Ccol_array.data(), Ccol_array.size() * sizeof(int));
+    cout << "uc info: " << in_stream.query_occupancy() << endl;
 
     //write U
     for (uint32_t i = 0 ; i != U.size(); ++i)
@@ -290,6 +321,7 @@ void Compression::write_bitstream() {
                 int32_t t = (int32_t)round(U[i](m,n));
                 in_stream.write_bits(&t, bithead.pca_bits);
             }
+    cout << "U: " << in_stream.query_occupancy() << endl;
 
     // write C
     for (uint32_t i = 0 ; i != C.size(); ++i)
@@ -298,6 +330,7 @@ void Compression::write_bitstream() {
                 int32_t t = (int32_t)round(C[i](m,n));
                 in_stream.write_bits(&t, bithead.pca_bits);
             }
+    cout << "C: " << in_stream.query_occupancy() << endl;
 }
 
 double Compression::mse_error(Matrix p, Matrix q) {
@@ -320,8 +353,44 @@ Matrix Compression::svd_decode(Matrix C, Matrix U) {
     return (U.trans() * std::move(C));
 }
 
-void Compression::adpac_encoder() {
+void Compression::adpac_encoder() {\
+    out_stream.resize_capacity(in_stream.query_capacity());
+    cout << "in: capacity: " << in_stream.query_capacity() << endl;
     entropy_coder.encode(&in_stream, &out_stream);
+    in_stream.seek(0);
+    cout << "in: " << in_stream.query_occupancy() << endl;
+    string tmp_file = "raw_stream.bin";
+    in_stream.save(tmp_file);
+
+
+    //allocate memory and read data
+    int data_size = getFileSize(tmp_file.c_str());
+    if (data_size < 0) {
+        printf("File not found\n");
+        return;
+    }
+    unsigned char* data = (unsigned char*)malloc(data_size * sizeof(unsigned char));
+    FILE* f = fopen(tmp_file.c_str() , "rb");
+    fread(data, 1, data_size, f);
+    fclose(f);
+
+    int alphabet = 256;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //Encoding
+    int result_size = data_size*2 + 1000;
+    unsigned char* result = (unsigned char*)malloc(result_size * sizeof(unsigned char));
+    result_size = Encode(data, data_size, alphabet, result);
+    ////////////////////////////////////////////////////////////////////////////////
+//    remove(tmp_file.c_str());
+
+    ofstream fout;
+    fout.open("result2.bin", ios::binary | ios::out | ios::trunc);
+    fout.write(reinterpret_cast<char *>(result), result_size);
+    fout.close();
+
+    cout << "out: " << out_stream.query_occupancy() << endl;
+    cout << "out2: " << result_size * 8 << endl;
 }
 
 void Compression::rate_distortion() {

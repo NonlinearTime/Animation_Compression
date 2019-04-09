@@ -2,6 +2,7 @@
 #include <fstream>
 #include "WavefrontObjFile.h"
 #include "Cluster.h"
+#include "Compression.h"
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
@@ -66,14 +67,19 @@ int main() {
 //
 //    f_obj.close();
 
+//
+//    ofstream fout;
+//
+//    char c = 'c';
+//    fout.open("test.txt", ios::trunc | ios::out | ios::binary);
+//    fout.write(&c, 1);
+//    fout.close();
 
-    ofstream fout;
-
-    char c = 'c';
-    fout.open("test.txt", ios::trunc | ios::out | ios::binary);
-    fout.write(&c, 1);
-    fout.close();
-
+    Compression compression;
+    compression.load_data("/home/haines/Documents/compression/Reconstructed_mesh", 0, 40);
+    compression.set_cluster_num(200);
+    compression.do_compression();
+    compression.save_data("result.bin");
 
     return 0;
 }

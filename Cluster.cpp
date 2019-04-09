@@ -11,11 +11,12 @@
 using namespace std;
 
 Cluster::Cluster(Frames obj_frames): obj_frames(std::move(obj_frames)){
-
+    num_vertices = obj_frames[0].num_vertices;
 }
 
 void Cluster::set_frames(Frames obj_frames) {
     this->obj_frames = std::move(obj_frames);
+    num_vertices = this->obj_frames[0].num_vertices;
 }
 
 void Cluster::set_clusters_num(int num_clusters) {
@@ -23,8 +24,9 @@ void Cluster::set_clusters_num(int num_clusters) {
     clusters.resize(num_clusters);
 }
 
-Cluster::Cluster(Frames obj_frames, int num_clusers): obj_frames(move(obj_frames)), num_clusters(num_clusers) {
-    clusters.resize(num_clusers);
+Cluster::Cluster(Frames obj_frames, int num_clusters): obj_frames(move(obj_frames)), num_clusters(num_clusters) {
+    clusters.resize(num_clusters);
+    num_vertices = obj_frames[0].num_vertices;
 }
 
 void Cluster::segmentation_per_frame(const Frame& frame) {
@@ -129,6 +131,7 @@ void Cluster::vertices_cluster() {
     }
     for (uint32_t i = 0; i != num_clusters; ++i) {
         seed_triangles.push_back(obj_frames[0].faces[lcfs[0].lcs[i].face_idx]);
+        cout << clusters[i].size() << endl;
     }
 }
 
@@ -136,12 +139,13 @@ float_t Cluster::calc_theta(uint32_t vertex_idx, uint32_t lc_idx) {
     vector<float_t > world_coord;
     float_t theta = 0;
     Point prior_coord, current_local_coord, current_world_coord;
-    prior_coord = lcfs[0].lcs[lc_idx].local2world(obj_frames[0].vertices[vertex_idx]);
+    prior_coord = lcfs[0].lcs[lc_idx].world2local(obj_frames[0].vertices[vertex_idx]);
 
     for (uint32_t i = 1 ; i != obj_frames.size(); ++i) {
-        current_local_coord = obj_frames[i].vertices[vertex_idx];
-        current_world_coord = lcfs[i].lcs[lc_idx].local2world(current_local_coord);
-        theta += vec_length2(current_world_coord - prior_coord);
+        current_world_coord = obj_frames[i].vertices[vertex_idx];
+        current_local_coord = lcfs[i].lcs[lc_idx].world2local(current_world_coord);
+        theta += vec_length2(current_local_coord - prior_coord);
+        prior_coord = current_local_coord;
     }
 
     return theta;
@@ -208,7 +212,7 @@ void Cluster::lcf_construction_first_frame(uint32_t frame_idx) {
 }
 
 void Cluster::lcf_construction_per_frame(uint32_t frame_idx, uint32_t prior_frame_idx) {
-    assert(!lcfs[frame_idx].lcs.empty());
+    assert(!lcfs[prior_frame_idx].lcs.empty());
     uint32_t face_idx ;
     LCF lcf;
     lcf.frame_idx = frame_idx;
@@ -233,7 +237,7 @@ void Cluster::segmentation() {
 }
 
 
-Point LC::world2local(const Point& p) {
+Point LC::world2local(const Point& p) const {
     Point l, pp;
     pp = p;
     pp -= o;
@@ -243,7 +247,7 @@ Point LC::world2local(const Point& p) {
     return l;
 }
 
-Point LC::local2world(const Point& p) {
+Point LC::local2world(const Point& p) const {
     Point l;
     l.x = restore_matrix(0,0) * p.x + restore_matrix(0,1) * p.y + restore_matrix(0,2) * p.z;
     l.y = restore_matrix(1,0) * p.x + restore_matrix(1,1) * p.y + restore_matrix(1,2) * p.z;

@@ -64,7 +64,7 @@ public:
     void do_compression();
     void do_compression(uint32_t cluster_num);
 
-    void save_data(char * file_name);
+    void save_data(string file_name);
 
     bool load_data(string data_dir, int first_frame, int num_frames);
 

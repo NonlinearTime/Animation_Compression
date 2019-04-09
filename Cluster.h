@@ -32,8 +32,8 @@ struct LC {
     Point o;
     Vector3 ix, iy, iz;
 
-    Point world2local(const Point& p);
-    Point local2world(const Point& p);
+    Point world2local(const Point& p) const ;
+    Point local2world(const Point& p) const ;
 
 };
 
@@ -57,7 +57,7 @@ class Cluster {
 public:
     Cluster () {}
     Cluster (Frames obj_frames);
-    Cluster (Frames obj_frames, int num_clusers);
+    Cluster (Frames obj_frames, int num_clusters);
 
     void set_frames(Frames obj_frames);
     void set_clusters_num(int N);
@@ -67,8 +67,8 @@ public:
     const Frames & get_frames() {return obj_frames;}
     const vector<TriangleFace>& get_seed_triangles() {return seed_triangles; }
     int get_clusters_num() {return num_clusters; }
-    vector<cluster > get_clusters() {return clusters;}
-    vector<LCF > get_lcfs() {return lcfs;}
+    const vector<cluster >& get_clusters() {return clusters;}
+    const vector<LCF >& get_lcfs() {return lcfs;}
 
 
 private:

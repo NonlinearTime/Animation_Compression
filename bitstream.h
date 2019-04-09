@@ -63,6 +63,8 @@ public:
     uint32 query_byte_occupancy() const;
     uint32 resize_capacity(uint32 size_in_bits);
 
+    void set_auto_resize(bool auto_resize) {this->auto_resize = auto_resize; }
+
     /* seek will only adjust the read index. there is purposely 
        no way to adjust the write index. */
     evx_status seek(uint32 bit_offset);
@@ -85,8 +87,8 @@ public:
     evx_status read_bytes(void *data, uint32 *byte_count);
     evx_status read_bits(void *data, uint32 *bit_count);
 
-    void save(char * file_name);
-    void load(char * file_name);
+    void save(std::string file_name);
+    void load(std::string file_name);
 
 private:
   

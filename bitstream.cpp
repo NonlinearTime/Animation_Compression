@@ -393,7 +393,7 @@ evx_status bitstream::read_bytes(void *data, uint32 *byte_count)
     return result;
 }
 
-    void bitstream::save(char *file_name) {
+    void bitstream::save(std::string file_name) {
         std::ofstream fout;
         fout.open(file_name, std::ios::trunc | std::ios::out | std::ios::binary);
         if (!fout.good()) return;
@@ -412,7 +412,7 @@ evx_status bitstream::read_bytes(void *data, uint32 *byte_count)
         }
     }
 
-    void bitstream::load(char *file_name) {
+    void bitstream::load(std::string file_name) {
         std::ifstream fin;
         fin.open(file_name, std::ios::in | std::ios::binary);
         if (!fin.good()) return;
