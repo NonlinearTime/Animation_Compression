@@ -24,7 +24,7 @@ using namespace std;
 using DeltaRow = vector<Point >;
 
 
-struct BtistreamHead {
+struct BitstreamHead {
     int seed_num;
     int frame_num;
     int seed_bits;
@@ -32,6 +32,7 @@ struct BtistreamHead {
     int delta_bits;
     double delta_length;
     int pca_bits;
+    uint32_t raw_size;
 };
 
 
@@ -43,9 +44,12 @@ class Compression {
     vector<Matrix > U, C;
     vector<double > UL, CL;
     vector<int > Urow_array, Crow_array, Ucol_array, Ccol_array;
-    BtistreamHead bithead;
+    BitstreamHead bithead;
     evx::bitstream in_stream, out_stream;
     evx::entropy_coder entropy_coder;
+    vector<uint32_t > seed_points_index;
+    vector<cluster > cluster_points_index;
+    uint32_t raw_size;
 
 public:
     Compression () {}

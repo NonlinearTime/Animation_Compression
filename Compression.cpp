@@ -8,7 +8,12 @@
 
 void Compression::save_data(string file_name) {
     // write out_bitstream into bin file
-    out_stream.save(file_name);
+    ofstream fout;
+    fout.open(file_name, ios::binary | ios::trunc | ios::out);
+    fout.write((char *)&raw_size, sizeof(raw_size));
+
+    out_stream.save(&fout);
+    fout.close();
 }
 
 bool Compression::load_data(string data_dir, int first_frame, int num_frames) {
@@ -62,6 +67,9 @@ void Compression::delta_encode() {
     cout << delta.Getcols() << " " << delta.Getrows() << endl;
 
     for (uint32_t i = 0 ; i != seed_triangles.size() ; ++i) {
+        seed_points_index.push_back(seed_triangles[i].v[0]);
+        seed_points_index.push_back(seed_triangles[i].v[1]);
+        seed_points_index.push_back(seed_triangles[i].v[2]);
         for (uint32_t j = 0 ; j != frames.size() ; ++j) {
             p1 = frames[j].vertices[seed_triangles[i].v[0]];
             p2 = frames[j].vertices[seed_triangles[i].v[1]];
@@ -331,6 +339,23 @@ void Compression::write_bitstream() {
                 in_stream.write_bits(&t, bithead.pca_bits);
             }
     cout << "C: " << in_stream.query_occupancy() << endl;
+
+    // write cluster points index
+    auto& clusters = clst.get_clusters();
+    for (uint32_t i = 0 ; i != clusters.size(); ++i) {
+        for (uint32_t j = 0 ; j != clusters[i].size(); ++j) {
+            in_stream.write_bytes((void *)&clusters[i][j], sizeof(uint32_t));
+        }
+    }
+    cout << "clusters info: " << in_stream.query_occupancy() << endl;
+
+    // write seed triangle point index
+    for (uint32_t i = 0 ; i != seed_points_index.size(); ++i)
+        in_stream.write_bytes((void *)&seed_points_index[i], sizeof(uint32_t));
+
+    cout << "seed triangle index : " << in_stream.query_occupancy() << endl;
+
+    bithead.raw_size = in_stream.query_occupancy();
 }
 
 double Compression::mse_error(Matrix p, Matrix q) {
@@ -356,6 +381,8 @@ Matrix Compression::svd_decode(Matrix C, Matrix U) {
 void Compression::adpac_encoder() {\
     out_stream.resize_capacity(in_stream.query_capacity());
     cout << "in: capacity: " << in_stream.query_capacity() << endl;
+    raw_size = in_stream.query_occupancy();
+
     entropy_coder.encode(&in_stream, &out_stream);
     in_stream.seek(0);
     cout << "in: " << in_stream.query_occupancy() << endl;
@@ -386,6 +413,9 @@ void Compression::adpac_encoder() {\
 
     ofstream fout;
     fout.open("result2.bin", ios::binary | ios::out | ios::trunc);
+    fout.write(reinterpret_cast<char *>(&alphabet), sizeof(alphabet));
+    fout.write(reinterpret_cast<char *>(&result_size), sizeof(result_size));
+    fout.write(reinterpret_cast<char *>(&data_size), sizeof(data_size));
     fout.write(reinterpret_cast<char *>(result), result_size);
     fout.close();
 

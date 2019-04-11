@@ -62,6 +62,7 @@ public:
     uint32 query_occupancy() const;
     uint32 query_byte_occupancy() const;
     uint32 resize_capacity(uint32 size_in_bits);
+    uint32 relarge_capacity(uint32 size_in_bits);
 
     void set_auto_resize(bool auto_resize) {this->auto_resize = auto_resize; }
 
@@ -88,7 +89,11 @@ public:
     evx_status read_bits(void *data, uint32 *bit_count);
 
     void save(std::string file_name);
+    void save(std::ofstream* out);
+
     void load(std::string file_name);
+    void load(std::ifstream* in);
+    void load(const char * buf);
 
 private:
   

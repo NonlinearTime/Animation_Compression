@@ -3,6 +3,9 @@
 #include "WavefrontObjFile.h"
 #include "Cluster.h"
 #include "Compression.h"
+#include "Decompression.h"
+#include "bitstream.h"
+#include "Coder.h"
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
@@ -74,12 +77,62 @@ int main() {
 //    fout.open("test.txt", ios::trunc | ios::out | ios::binary);
 //    fout.write(&c, 1);
 //    fout.close();
+//
+//    Compression compression;
+//    compression.load_data("/home/haines/Documents/compression/Reconstructed_mesh", 0, 40);
+//    compression.set_cluster_num(200);
+//    compression.do_compression();
+//    compression.save_data("result.bin");
 
-    Compression compression;
-    compression.load_data("/home/haines/Documents/compression/Reconstructed_mesh", 0, 40);
-    compression.set_cluster_num(200);
-    compression.do_compression();
-    compression.save_data("result.bin");
+//    BitstreamHead bhead;
+//    bhead.seed_num = 1;
+//    bhead.frame_num = 2;
+//    bhead.seed_bits = 3;
+//    bhead.seed_length = 0.9;
+//    bhead.delta_bits = 4;
+//    bhead.delta_length = 1.8;
+//    bhead.pca_bits = 5;
+//    bhead.raw_size = 6;
+//
+//    int data_size = 48;
+//    int alphabet = 256;
+//    int result_size = data_size*2 + 1000;
+//    unsigned char* result = (unsigned char*)malloc(result_size * sizeof(unsigned char));
+//    result_size = Encode((char *)&bhead, data_size, alphabet, result);
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //Decoding
+//    int test_size = data_size;
+//    int* test = (int*)malloc(test_size*sizeof(int));
+//    test_size = Decoding(result, alphabet, test);
+//    char *tt = (char *)malloc(test_size);
+//    for (uint32_t i = 0 ; i != test_size; ++i) tt[i] = (char)test[i];
+//
+//    BitstreamHead t;
+//    memcpy(&t, tt, data_size);
+//
+//    evx::bitstream in(1024), out(1024), test(1024);
+//    in.write_bytes(&bhead, 48);
+
+
+//    BitstreamHead bbhead;
+//    uint32_t size = 48;
+////    in.read_bytes(&bbhead, &size);
+//    uint32_t raw_size = in.query_occupancy();
+//
+//    evx::entropy_coder coder;
+//    coder.encode(&in, &out);
+//    coder.decode(raw_size, &out, &test);
+//
+//    BitstreamHead thead;
+//    size = 48;
+//    test.read_bytes(&thead, &size);
+
+
+    Decompression decompression;
+    decompression.load_data("result.bin");
+    decompression.do_decompression();
 
     return 0;
 }

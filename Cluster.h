@@ -79,6 +79,7 @@ private:
     float_t calc_theta(uint32_t vertex_idx, uint32_t lc_idx);
 
     void select_seeds(uint32_t frame_idx = 0);
+    void reduce_vertices(uint32_t vertex_idx, uint32_t frame_idx, bool* is_used);
 
     void segmentation_per_frame(const Frame& frame);
 

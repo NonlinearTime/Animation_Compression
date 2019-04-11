@@ -298,3 +298,11 @@ void Matrix::quantization(int bits, double length) {
         }
     }
 }
+
+void Matrix::dequantization(int bits, double length) {
+    for (uint32_t i = 0 ; i != rows; ++i) {
+        for (uint32_t j = 0 ; j != cols; ++j) {
+            data[i][j] = (data[i][j] * length ) / pow(2, bits);
+        }
+    }
+}

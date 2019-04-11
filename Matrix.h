@@ -52,6 +52,7 @@ public:
     double max_element();
 
     void quantization(int bits, double length);
+    void dequantization(int bits, double length);
 
     double &operator()(int x,int y){
         return data[x][y];

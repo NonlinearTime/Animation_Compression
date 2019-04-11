@@ -116,6 +116,22 @@ void Cluster::vertices_cluster() {
     float_t min_theta = MAXFLOAT;
     float_t theta;
     uint32_t cluster_idx = 0;
+    bool is_visited[num_vertices];
+    memset(is_visited, 0, sizeof(bool) * num_vertices);
+    uint32_t sum = 0;
+
+    for (uint32_t j = 0 ; j != num_clusters; ++j) {
+        TriangleFace& f = obj_frames[0].faces[lcfs[0].lcs[j].face_idx];
+        for (uint32_t i = 0; i != 3; ++i) {
+            if (!is_visited[f.v[i]]) {
+                sum += 1;
+                is_visited[f.v[i]] = true;
+            }
+        }
+    }
+
+    cout << "seed points num: " << sum << endl;
+
     for (uint32_t i = 0 ; i != num_vertices; ++i) {
         min_theta = MAXFLOAT;
         for (uint32_t j = 0 ; j != num_clusters; ++j) {
@@ -125,14 +141,19 @@ void Cluster::vertices_cluster() {
                 min_theta = theta;
             }
         }
-        TriangleFace& face = obj_frames[0].faces[lcfs[0].lcs[cluster_idx].face_idx];
-        if (i != face.v[0] && i != face.v[1] && i != face.v[2])
-            clusters[cluster_idx].push_back(i);
+//        TriangleFace& face = obj_frames[0].faces[lcfs[0].lcs[cluster_idx].face_idx];
+//        if (i != face.v[0] && i != face.v[1] && i != face.v[2])
+//            clusters[cluster_idx].push_back(i);
+        if (!is_visited[i]) clusters[cluster_idx].push_back(i);
     }
+
+    sum = 0;
     for (uint32_t i = 0; i != num_clusters; ++i) {
         seed_triangles.push_back(obj_frames[0].faces[lcfs[0].lcs[i].face_idx]);
+        sum += clusters[i].size();
         cout << clusters[i].size() << endl;
     }
+    cout << "Total clusters vetices num: " << sum << endl;
 }
 
 float_t Cluster::calc_theta(uint32_t vertex_idx, uint32_t lc_idx) {
@@ -150,6 +171,33 @@ float_t Cluster::calc_theta(uint32_t vertex_idx, uint32_t lc_idx) {
 
     return theta;
 }
+
+void Cluster::reduce_vertices(uint32_t vertex_idx, uint32_t frame_idx, bool *is_used) {
+    Frame& frame = obj_frames[frame_idx];
+//    for (uint32_t i = 0 ; i != frame.faces.size(); ++i) {
+//        if (frame.faces[i].v[0] == vertex_idx) {
+//            is_used[frame.faces[i].v[1]] = true;
+//            is_used[frame.faces[i].v[2]] = true;
+//        }
+//        if (frame.faces[i].v[1] == vertex_idx) {
+//            is_used[frame.faces[i].v[0]] = true;
+//            is_used[frame.faces[i].v[2]] = true;
+//        }
+//        if (frame.faces[i].v[2] == vertex_idx) {
+//            is_used[frame.faces[i].v[0]] = true;
+//            is_used[frame.faces[i].v[1]] = true;
+//        }
+//    }
+
+    for (uint32_t i = 0; i != frame.topo[vertex_idx].size(); ++i) {
+        uint32_t v = frame.topo[vertex_idx][i];
+        is_used[v] = true;
+        for (uint32_t j = 0; j != frame.topo[v].size(); ++j) {
+            is_used[frame.topo[v][j]] = true;
+        }
+    }
+}
+
 
 void Cluster::select_seeds(uint32_t frame_idx) {
     Frame& frame = obj_frames[frame_idx];
@@ -170,6 +218,7 @@ void Cluster::select_seeds(uint32_t frame_idx) {
     }
 
     is_visited[idx] = true;
+    reduce_vertices(idx, frame_idx, is_visited);
     seeds.push_back(idx);
 
     float_t min_dist = MAXFLOAT;
@@ -193,6 +242,7 @@ void Cluster::select_seeds(uint32_t frame_idx) {
             }
         }
         is_visited[idx] = true;
+        reduce_vertices(idx, frame_idx, is_visited);
         seeds.push_back(idx);
     }
 

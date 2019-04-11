@@ -85,6 +85,34 @@ uint32 bitstream::resize_capacity(uint32 size_in_bits)
     data_capacity = byte_size;
     return size_in_bits;
 }
+    uint32 bitstream::relarge_capacity(uint32 size_in_bits) {
+        if (EVX_PARAM_CHECK)
+        {
+            if (0 == size_in_bits)
+            {
+                evx_post_error(EVX_ERROR_INVALIDARG);
+                return 0;
+            }
+        }
+
+        uint8* data = data_store;
+
+        uint32 byte_size = align(size_in_bits, 8) >> 3;
+        data_store = new uint8[byte_size];
+
+        if (!data_store)
+        {
+            evx_post_error(EVX_ERROR_EXECUTION_FAILURE);
+            return 0;
+        }
+
+        memcpy(data_store, data, data_capacity);
+
+        delete[] data;
+
+        data_capacity = byte_size;
+        return size_in_bits;
+    }
 
 evx_status bitstream::seek(uint32 bit_offset) 
 {
@@ -158,7 +186,7 @@ evx_status bitstream::write_byte(uint8 value)
         if (!auto_resize)
             return EVX_ERROR_CAPACITY_LIMIT;
         else
-            resize_capacity(query_capacity() * 2);
+            relarge_capacity(query_capacity() * 2);
     }
 
     /* Determine the current byte to write. */
@@ -191,7 +219,7 @@ evx_status bitstream::write_bit(uint8 value)
         if (!auto_resize)
             return EVX_ERROR_CAPACITY_LIMIT;
         else
-            resize_capacity(query_capacity() * 2);
+            relarge_capacity(query_capacity() * 2);
     }
 
     /* Determine the current byte to write. */
@@ -223,7 +251,7 @@ evx_status bitstream::write_bits(void *data, uint32 bit_count)
         if (!auto_resize)
             return EVX_ERROR_CAPACITY_LIMIT;
         else
-            resize_capacity(query_capacity() * 2);
+            relarge_capacity(query_capacity() + bit_count * 2);
     }
 
     uint32 bits_copied = 0;
@@ -423,12 +451,89 @@ evx_status bitstream::read_bytes(void *data, uint32 *byte_count)
         fin.read(reinterpret_cast<char *>(&data_capacity), sizeof(uint32_t));
         fin.read(reinterpret_cast<char *>(&auto_resize), sizeof(char));
 
+        // resize
+        auto s = read_index, d = write_index;
+        resize_capacity(data_capacity * 8);
+        read_index = s;
+        write_index = d;
+
         // load bitstream data
-        auto s = read_index >> 3;
-        auto d = write_index >> 3;
+        s >>= 3;
+        d >>= 3;
+        printf("s: %d d: %d data_capacity: %d\n", s, d, data_capacity);
         for (uint32_t i = s; i <= d; ++i) {
             fin.read(reinterpret_cast<char *>(&data_store[i]), sizeof(uint8_t));
         }
     }
+
+    void bitstream::save(std::ofstream* out) {
+        std::ofstream& fout = *out;
+        if (!fout.good()) return;
+
+        // write bitstream head information
+        fout.write(reinterpret_cast<char *>(&read_index), sizeof(uint32_t));
+        fout.write(reinterpret_cast<char *>(&write_index), sizeof(uint32_t));
+        fout.write(reinterpret_cast<char *>(&data_capacity), sizeof(uint32_t));
+        fout.write(reinterpret_cast<char *>(&auto_resize), sizeof(char));
+
+        // write bitstream data
+        auto s = read_index >> 3;
+        auto d = write_index >> 3;
+        for (uint32 i = s; i <= d; ++i) {
+            fout.write(reinterpret_cast<char *>(&data_store[i]), sizeof(uint8_t));
+        }
+    }
+
+    void bitstream::load(std::ifstream* in) {
+        std::ifstream& fin = *in;
+        if (!fin.good()) return;
+
+        // load bitstream head information
+        fin.read(reinterpret_cast<char *>(&read_index), sizeof(uint32_t));
+        fin.read(reinterpret_cast<char *>(&write_index), sizeof(uint32_t));
+        fin.read(reinterpret_cast<char *>(&data_capacity), sizeof(uint32_t));
+        fin.read(reinterpret_cast<char *>(&auto_resize), sizeof(char));
+
+        // resize
+        auto s = read_index, d = write_index;
+        resize_capacity(data_capacity * 8);
+        read_index = s;
+        write_index = d;
+
+        // load bitstream data
+        s >>= 3;
+        d >>= 3;
+        printf("s: %d d: %d data_capacity: %d\n", s, d, data_capacity);
+        for (uint32_t i = s; i <= d; ++i) {
+            fin.read(reinterpret_cast<char *>(&data_store[i]), sizeof(uint8_t));
+        }
+    }
+
+    void bitstream::load(const char *buf) {
+        uint32_t offset = 0;
+        // load bitstream head information
+        read_index = ((uint32_t *)buf)[0];
+        write_index = ((uint32_t *)buf)[1];
+        data_capacity = ((uint32_t *)buf)[2];
+        offset = sizeof(uint32_t) * 3;
+        auto_resize = buf[offset];
+        offset += 1;
+
+        // resize
+        auto s = read_index, d = write_index;
+        resize_capacity(data_capacity * 8);
+        read_index = s;
+        write_index = d;
+
+        // load bitstream data
+        s >>= 3;
+        d >>= 3;
+        printf("s: %d d: %d data_capacity: %d\n", s, d, data_capacity);
+        memcpy(data_store + s, buf + offset, d - s + 1);
+//        for (uint32_t i = s; i <= d; ++i) {
+//            data_store[i] = buf[i + offset];
+//        }
+    }
+
 
 } // namespace EVX

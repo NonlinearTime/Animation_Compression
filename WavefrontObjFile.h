@@ -157,6 +157,7 @@ struct Obj {
     Point3D<T> bounding_sphere_c;
     T bounding_sphere_r;
     uint32_t num_vertices, num_faces;
+    vector<vector<uint32_t >> topo;
 };
 
 template <typename T>
@@ -336,6 +337,23 @@ bool WavefrontObjFile<T>::load_obj(const string& file_name) {
 //        << obj.bounding_box[1].x << "," << obj.bounding_box[1].y << "," << obj.bounding_box[1].z <<")" << endl
 //        <<"obj bounding sphere center:"<<obj.bounding_sphere_c.x<<","<<obj.bounding_sphere_c.y<<","<<obj.bounding_sphere_c.z<<endl
 //        <<"obj bounding sphere radius:"<<obj.bounding_sphere_r<<endl;
+    obj.topo.resize(obj.num_vertices);
+    uint32_t p1, p2, p3;
+    for (uint32_t i = 0; i != obj.num_faces; ++i) {
+        p1 = obj.faces[i].v[0];
+        p2 = obj.faces[i].v[1];
+        p3 = obj.faces[i].v[2];
+
+        obj.topo[p1].push_back(p2);
+        obj.topo[p1].push_back(p3);
+
+        obj.topo[p2].push_back(p1);
+        obj.topo[p2].push_back(p3);
+
+        obj.topo[p3].push_back(p1);
+        obj.topo[p3].push_back(p2);
+    }
+
     fin.close();
     return false;
 }
