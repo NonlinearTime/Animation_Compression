@@ -29,6 +29,7 @@ void Decompression::load_data(string file_name) {
 void Decompression::do_decompression() {
     adpac_decoder("result2.bin");
     cout << "arithmetic decoede done!" << endl;
+
     read_bitstream();
     cout << "read bitstream done!" << endl;
 
@@ -143,6 +144,8 @@ void Decompression::read_bitstream() {
     uint32_t cluster_num = bithead.seed_num;
     UL.resize(cluster_num);
     CL.resize(cluster_num);
+    Ul.resize(cluster_num);
+    Cl.resize(cluster_num);
     Urow_array.resize(cluster_num);
     Ucol_array.resize(cluster_num);
     Crow_array.resize(cluster_num);
@@ -152,6 +155,8 @@ void Decompression::read_bitstream() {
 
     in_stream.read_bytes(UL.data(), &lsize);
     in_stream.read_bytes(CL.data(), &lsize);
+    in_stream.read_bytes(Ul.data(), &lsize);
+    in_stream.read_bytes(Cl.data(), &lsize);
     in_stream.read_bytes(Urow_array.data(), &msize);
     in_stream.read_bytes(Ucol_array.data(), &msize);
     in_stream.read_bytes(Crow_array.data(), &msize);
@@ -202,15 +207,24 @@ void Decompression::read_bitstream() {
         in_stream.read_bytes(&t, &size);
         seed_points_index.push_back(t);
     }
+
+    // read faces
+    for (uint32_t i = 0 ; i != bithead.face_num; ++i) {
+        TriangleFace f;
+        in_stream.read_bytes(&f.v[0], &size);
+        in_stream.read_bytes(&f.v[1], &size);
+        in_stream.read_bytes(&f.v[2], &size);
+        faces.push_back(f);
+    }
 }
 
 void Decompression::dequantization() {
     for (uint32_t i = 0 ; i != seed_triangle_points.size() ; ++i)
-        seed_triangle_points[i] = (seed_triangle_points[i] * bithead.seed_length) / pow(2, bithead.seed_bits);
-    delta.dequantization(bithead.delta_bits, bithead.delta_length);
+        seed_triangle_points[i] = (seed_triangle_points[i] / pow(2, bithead.seed_bits)) * bithead.seed_length + bithead.seed_low;
+    delta.dequantization(bithead.delta_bits, bithead.delta_length, bithead.delta_low);
     for (uint32_t i = 0 ; i != U.size(); ++i) {
-        U[i].dequantization(bithead.pca_bits, UL[i]);
-        C[i].dequantization(bithead.pca_bits, CL[i]);
+        U[i].dequantization(bithead.pca_bits, UL[i], Ul[i]);
+        C[i].dequantization(bithead.pca_bits, CL[i], Cl[i]);
     }
 }
 
@@ -264,7 +278,6 @@ void Decompression::reconstruction() {
             vertices[seed_points_index[i]].push_back(p);
         }
     }
-
 }
 
 void Decompression::lcf_reconstruction(int frame_idx) {
@@ -316,7 +329,22 @@ void Decompression::lcf_reconstruction() {
 }
 
 void Decompression::save_objs(string data_dir) {
-
+    ofstream fout;
+    if (data_dir[data_dir.length()] != '/') data_dir.append("/");
+    string file_name = data_dir;
+    char buf[256];
+    file_name.append("%06d.obj");
+    for (uint32_t i = 0 ; i != bithead.frame_num ; ++i) {
+        sprintf(buf, file_name.c_str(), i);
+        fout.open(buf, ios::out);
+        for (uint32_t j = 0 ; j != vertices.size(); ++j) {
+            fout << "v " << vertices[j][i] << endl;
+        }
+        for (uint32_t j = 0; j != faces.size(); ++j) {
+            fout << "f " << faces[j] << endl;
+        }
+        fout.close();
+    }
 }
 
 

@@ -7,6 +7,8 @@
 #include "bitstream.h"
 #include "Coder.h"
 
+#define compression_debug 1
+
 int main() {
     std::cout << "Hello, World!" << std::endl;
     Point3D<int> X(1,2, 3.1);
@@ -78,12 +80,13 @@ int main() {
 //    fout.write(&c, 1);
 //    fout.close();
 //
-//    Compression compression;
-//    compression.load_data("/home/haines/Documents/compression/Reconstructed_mesh", 0, 40);
-//    compression.set_cluster_num(200);
-//    compression.do_compression();
-//    compression.save_data("result.bin");
-
+#ifdef compression_debug
+    Compression compression;
+    compression.load_data("/home/haines/Documents/compression/Reconstructed_mesh", 0, 40);
+    compression.set_cluster_num(10);
+    compression.do_compression();
+    compression.save_data("result.bin");
+#endif
 //    BitstreamHead bhead;
 //    bhead.seed_num = 1;
 //    bhead.frame_num = 2;
@@ -133,6 +136,7 @@ int main() {
     Decompression decompression;
     decompression.load_data("result.bin");
     decompression.do_decompression();
+    decompression.save_objs("/home/haines/Documents/compression/recon_mesh");
 
     return 0;
 }

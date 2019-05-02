@@ -19,6 +19,8 @@
 #include "bitstream.h"
 #include "cabac.h"
 
+
+
 using namespace std;
 
 using DeltaRow = vector<Point >;
@@ -27,10 +29,13 @@ using DeltaRow = vector<Point >;
 struct BitstreamHead {
     int seed_num;
     int frame_num;
+    int face_num;
     int seed_bits;
     double seed_length;
+    double seed_low;
     int delta_bits;
     double delta_length;
+    double delta_low;
     int pca_bits;
     uint32_t raw_size;
 };
@@ -43,6 +48,7 @@ class Compression {
     vector<double > seed_triangle_points;
     vector<Matrix > U, C;
     vector<double > UL, CL;
+    vector<double > Ul, Cl;
     vector<int > Urow_array, Crow_array, Ucol_array, Ccol_array;
     BitstreamHead bithead;
     evx::bitstream in_stream, out_stream;

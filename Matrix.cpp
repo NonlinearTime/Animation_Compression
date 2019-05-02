@@ -291,18 +291,18 @@ double Matrix::max_element() {
     return max_ele;
 }
 
-void Matrix::quantization(int bits, double length) {
+void Matrix::quantization(int bits, double length, double low) {
     for (uint32_t i = 0 ; i != rows; ++i) {
         for (uint32_t j = 0 ; j != cols; ++j) {
-            data[i][j] = pow(2, bits) * (data[i][j] / length );
+            data[i][j] = pow(2, bits) * ((data[i][j] - low)/ length );
         }
     }
 }
 
-void Matrix::dequantization(int bits, double length) {
+void Matrix::dequantization(int bits, double length, double low) {
     for (uint32_t i = 0 ; i != rows; ++i) {
         for (uint32_t j = 0 ; j != cols; ++j) {
-            data[i][j] = (data[i][j] * length ) / pow(2, bits);
+            data[i][j] = (data[i][j] / pow(2, bits)) * length + low;
         }
     }
 }

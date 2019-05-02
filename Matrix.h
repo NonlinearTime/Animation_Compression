@@ -51,8 +51,8 @@ public:
     double min_element();
     double max_element();
 
-    void quantization(int bits, double length);
-    void dequantization(int bits, double length);
+    void quantization(int bits, double length, double low);
+    void dequantization(int bits, double length, double low);
 
     double &operator()(int x,int y){
         return data[x][y];

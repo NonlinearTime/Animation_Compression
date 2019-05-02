@@ -168,6 +168,7 @@ public:
     bool load_obj(const string& file_name);
     void save_obj(const string& file_name);
     Obj<T> get_obj();
+    void set_obj(Obj<T> obj);
 };
 
 template<typename T>
@@ -379,5 +380,9 @@ Obj<T> WavefrontObjFile<T>::get_obj() {
     return obj;
 }
 
+template<typename T>
+void WavefrontObjFile<T>::set_obj(Obj<T> obj) {
+    this->obj = obj;
+}
 
 #endif //ANIMATION_COMPRESSION_WAVEFRONTOBJFILE_H

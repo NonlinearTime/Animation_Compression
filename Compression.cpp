@@ -167,7 +167,7 @@ void Compression::svd_encode() {
                 Point t = lcfs[k].lcs[i].world2local(frames[k].vertices[p]);
                 m(3 * j, k) = t.x;
                 m(3 * j + 1, k) = t.y;
-                m(3 * j + 2, k) = t.y;
+                m(3 * j + 2, k) = t.z;
             }
         }
         data.push_back(m);
@@ -175,7 +175,7 @@ void Compression::svd_encode() {
 
     for (uint32_t i = 0 ; i != data.size() ; ++i) {
         cout << "svd: " << i << endl;
-        svd_per_cluster(data[i], 1);
+        svd_per_cluster(data[i], 10);
     }
 }
 
@@ -255,8 +255,9 @@ void Compression::quantitzation(int pca_bits, int seed_bits, int delta_bits) {
         if (t > Umax) Umax = t;
         if (p < Umin) Umin = p;
 
-        U[i].quantization(pca_bits, t - p);
+        U[i].quantization(pca_bits, t - p, p);
         UL.push_back(t - p);
+        Ul.push_back(p);
         Urow_array.push_back(U[i].Getrows());
         Ucol_array.push_back(U[i].Getcols());
 
@@ -266,8 +267,9 @@ void Compression::quantitzation(int pca_bits, int seed_bits, int delta_bits) {
         if (t > Cmax) Cmax = t;
         if (t < Cmin) Cmin = p;
 
-        C[i].quantization(pca_bits, t - p);
+        C[i].quantization(pca_bits, t - p, p);
         CL.push_back(t - p);
+        Cl.push_back(p);
         Crow_array.push_back(C[i].Getrows());
         Ccol_array.push_back(C[i].Getcols());
     }
@@ -278,11 +280,13 @@ void Compression::quantitzation(int pca_bits, int seed_bits, int delta_bits) {
         if (seed_triangle_points[i] < d_min) d_min = seed_triangle_points[i];
     }
     for (uint32_t i = 0 ; i != seed_triangle_points.size() ; ++i)
-        seed_triangle_points[i] = (seed_triangle_points[i] / (d_max - d_min)) * pow(2, seed_bits);
+        seed_triangle_points[i] = ((seed_triangle_points[i] - d_min) / (d_max - d_min)) * pow(2, seed_bits);
     bithead.seed_length = d_max - d_min;
+    bithead.seed_low = d_min;
 
     bithead.delta_length = delta.max_element() - delta.min_element();
-    delta.quantization(bithead.delta_bits, bithead.delta_length);
+    bithead.delta_low = delta.min_element();
+    delta.quantization(bithead.delta_bits, bithead.delta_length, bithead.delta_low);
 }
 
 void Compression::write_bitstream() {
@@ -290,6 +294,7 @@ void Compression::write_bitstream() {
     out_stream.set_auto_resize(true);
     bithead.seed_num = clst.get_clusters_num();
     bithead.frame_num = clst.get_frames().size();
+    bithead.face_num = clst.get_frames()[0].num_faces;
 
     in_stream.resize_capacity(1024);
     //write bitstream head
@@ -316,6 +321,8 @@ void Compression::write_bitstream() {
     //write U/C information
     in_stream.write_bytes(UL.data(), UL.size() * sizeof(double));
     in_stream.write_bytes(CL.data(), UL.size() * sizeof(double));
+    in_stream.write_bytes(Ul.data(), UL.size() * sizeof(double));
+    in_stream.write_bytes(Cl.data(), UL.size() * sizeof(double));
     in_stream.write_bytes(Urow_array.data(), Urow_array.size() * sizeof(int));
     in_stream.write_bytes(Ucol_array.data(), Ucol_array.size() * sizeof(int));
     in_stream.write_bytes(Crow_array.data(), Crow_array.size() * sizeof(int));
@@ -354,6 +361,16 @@ void Compression::write_bitstream() {
         in_stream.write_bytes((void *)&seed_points_index[i], sizeof(uint32_t));
 
     cout << "seed triangle index : " << in_stream.query_occupancy() << endl;
+
+    // write faces
+    auto frame = clst.get_frames()[0];
+    for (uint32_t i = 0 ; i != bithead.face_num ; ++i) {
+        in_stream.write_bytes((void *)&frame.faces[i].v[0], sizeof(uint32_t));
+        in_stream.write_bytes((void *)&frame.faces[i].v[1], sizeof(uint32_t));
+        in_stream.write_bytes((void *)&frame.faces[i].v[2], sizeof(uint32_t));
+    }
+
+    cout << "faces: " << in_stream.query_occupancy() << endl;
 
     bithead.raw_size = in_stream.query_occupancy();
 }

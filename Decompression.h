@@ -25,6 +25,7 @@ class Decompression {
     vector<double > seed_triangle_points;
     vector<Matrix > U, C;
     vector<double > UL, CL;
+    vector<double > Ul, Cl;
     vector<int > Urow_array, Crow_array, Ucol_array, Ccol_array;
     BitstreamHead bithead;
     evx::bitstream in_stream, out_stream, bstream;
@@ -37,6 +38,10 @@ class Decompression {
     Matrix seed_data;
     vector<vector<Point >> vertices;
     uint32_t num_vertices;
+
+    vector<TriangleFace> faces;
+
+    Frames frames;
 
     vector<LCF > lcfs;
 
